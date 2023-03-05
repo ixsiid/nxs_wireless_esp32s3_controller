@@ -35,10 +35,7 @@ void app_main();
 
 #include "RMT_WS2812.hpp"
 
-#define CONFIG_RMT_CHANNEL     RMT_CHANNEL_0
 #define CONFIG_MAX_BRIGHTNESS  20
-#define CONFIG_RMT_GPIO        GPIO_NUM_35
-#define CONFIG_LED_NUM         1
 
 void app_main(void) {
 	ESP_LOGI(tag, "Start");
@@ -56,7 +53,7 @@ void app_main(void) {
 	// sb->connect(NXS_PIN);
 
 	// LED
-	RMT_WS2812 *led = new RMT_WS2812(CONFIG_RMT_CHANNEL, CONFIG_RMT_GPIO, CONFIG_LED_NUM);
+	RMT_WS2812 *led = new RMT_WS2812(RMT_WS2812::esp_board::ATOMS3_lite);
 	ESP_LOGI(tag, "%p", led);
 	led->clear();
 	/*
