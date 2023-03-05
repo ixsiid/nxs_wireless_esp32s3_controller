@@ -33,6 +33,13 @@ extern "C" {
 void app_main();
 }
 
+#include "RMT_WS2812.hpp"
+
+#define CONFIG_RMT_CHANNEL     RMT_CHANNEL_0
+#define CONFIG_MAX_BRIGHTNESS  20
+#define CONFIG_RMT_GPIO        GPIO_NUM_35
+#define CONFIG_LED_NUM         1
+
 void app_main(void) {
 	ESP_LOGI(tag, "Start");
 	esp_err_t ret;
@@ -45,8 +52,15 @@ void app_main(void) {
 	}
 	ESP_ERROR_CHECK(ret);
 
-	static NXSWirelessClient *sb = new NXSWirelessClient(NXS_MAC);
-	sb->connect(NXS_PIN);
+	// static NXSWirelessClient *sb = new NXSWirelessClient(NXS_MAC);
+	// sb->connect(NXS_PIN);
+
+	// LED
+	RMT_WS2812 *led = new RMT_WS2812(CONFIG_RMT_CHANNEL, CONFIG_RMT_GPIO, CONFIG_LED_NUM);
+	ESP_LOGI(tag, "%p", led);
+	led->begin();
+	led->clear();
+	/*
 
 	// ATOMS3
 	const uint8_t buttonPins[] = {41, 1, 2};
@@ -61,11 +75,11 @@ void app_main(void) {
 				switch (pin) {
 					case 1:
 						ESP_LOGI(tag, "released gpio 1");
-						sb->up();
+						// sb->up();
 						break;
 					case 2:
 						ESP_LOGI(tag, "released gpio 2");
-						sb->down();
+						// sb->down();
 						break;
 					case 41:
 						ESP_LOGI(tag, "released gpio 41");
@@ -75,8 +89,19 @@ void app_main(void) {
 		}
 	}, "ButtonCheck", 4096, nullptr, 1, nullptr, 1);
 
+	*/
+	int color = 0;
 	while (true) {
-		vTaskDelay(100 / portTICK_PERIOD_MS);
+		vTaskDelay(1000 / portTICK_PERIOD_MS);
 		ESP_LOGD(tag, "Idleing");
+		
+		led->setPixel(0, 
+			color & 0b001 ? 255 : 0,
+			color & 0b010 ? 255 : 0,
+			color & 0b100 ? 255 : 0);
+		led->setBrightness(CONFIG_MAX_BRIGHTNESS);
+		led->refresh();
+		++color;
+		ESP_LOGI(tag, "color: %d", color);
 	}
 }
