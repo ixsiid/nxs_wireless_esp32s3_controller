@@ -58,7 +58,6 @@ void app_main(void) {
 	// LED
 	RMT_WS2812 *led = new RMT_WS2812(CONFIG_RMT_CHANNEL, CONFIG_RMT_GPIO, CONFIG_LED_NUM);
 	ESP_LOGI(tag, "%p", led);
-	led->begin();
 	led->clear();
 	/*
 
