@@ -48,7 +48,7 @@ NXSWirelessClient::NXSWirelessClient(const char *peer_address) {
 	}
 
 	central = new NimbleCentral();
-	int rc  = central->start("SBClient");
+	int rc  = central->start("NXS");
 	assert(rc == 0);
 }
 

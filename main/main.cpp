@@ -50,18 +50,18 @@ void app_main(void) {
 	ESP_ERROR_CHECK(ret);
 
 	static NXSWirelessClient *nxs = new NXSWirelessClient(NXS_MAC);
-	nxs->connect(NXS_PIN);
 
 	// LED
+	vTaskDelay(1000 / portTICK_PERIOD_MS);
 	static TickType_t led_dis = 0xffffffff;
-	static RMT_WS2812 *led = new RMT_WS2812(RMT_WS2812::esp_board::ATOMS3_lite);
+	static RMT_WS2812 *led	 = new RMT_WS2812(RMT_WS2812::esp_board::ATOMS3_lite);
 	led->clear();
 
 	// 起動時に青で点滅
 	led->setPixel(0, 0, 0, 255);
 	led->setBrightness(CONFIG_MAX_BRIGHTNESS);
 	led->refresh();
-	led_dis = xTaskGetTickCount() + 2000 / portTICK_PERIOD_MS;
+	led_dis = xTaskGetTickCount() + 1000 / portTICK_PERIOD_MS;
 
 	// ATOMS3
 	/// G6をGND代わりに使う
@@ -70,11 +70,14 @@ void app_main(void) {
 	gpio_set_level(gnd_pin, 0);
 
 	/// High, Lowボタンのピン番号
-	const uint8_t high_pin = 6;
-	const uint8_t low_pin  = 7;
+	const uint8_t high_pin  = 6;
+	const uint8_t low_pin   = 7;
+	const uint8_t debug_pin = 41;
 
-	const uint8_t buttonPins[] = {high_pin, low_pin};
+	const uint8_t buttonPins[] = {high_pin, low_pin, debug_pin};
 	static Button *button	  = new Button(buttonPins, sizeof(buttonPins));
+
+		const TickType_t wait = 10000 / portTICK_PERIOD_MS;
 
 	while (true) {
 		// Main loop
@@ -90,17 +93,28 @@ void app_main(void) {
 			switch (pin) {
 				case high_pin:
 					ESP_LOGI(tag, "button: high");
-					// nxs->connect(NXS_PIN);
+					nxs->connect(NXS_PIN);
+					vTaskDelay(wait);
 					nxs->up();
-					// nxs->disconnect();
+					vTaskDelay(wait);
+					nxs->disconnect();
+					led->setPixel(0, 255, 0, 0);
 					break;
 				case low_pin:
 					ESP_LOGI(tag, "button: low");
-					// nxs->connect(NXS_PIN);
+					nxs->connect(NXS_PIN);
+					vTaskDelay(wait);
 					nxs->down();
-					// nxs->disconnect();
+					vTaskDelay(wait);
+					nxs->disconnect();
+					led->setPixel(0, 0, 255, 0);
 					break;
+				case debug_pin:
+					ESP_LOGI(tag, "button: debug");
+					led->setPixel(0, 0, 0, 255);
 			}
+			led->refresh();
+			led_dis = xTaskGetTickCount() + 500 / portTICK_PERIOD_MS;
 		});
 	}
 }
