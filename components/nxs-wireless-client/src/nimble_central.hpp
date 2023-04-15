@@ -41,7 +41,7 @@ class NimbleCentral {
     public:
 	static int start(const char *device_name);
 	static int connect(const ble_addr_t *address, NimbleCallback callback);
-	static int disconnect(uint16_t handle, NimbleCallback callback);
+	static int disconnect();
 	static int write(const ble_uuid_t *service, const ble_uuid_t *characteristic,
 				  const uint8_t *value, size_t length, int timeout,
 				  NimbleCallback callback);

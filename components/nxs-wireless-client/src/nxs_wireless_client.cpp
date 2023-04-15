@@ -12,29 +12,29 @@
 const ble_uuid128_t NXSWirelessClient::service = {
     .u	 = {.type = BLE_UUID_TYPE_128},
     .value = {
-		0x79, 0x3d, 0x64, 0x9e, 0x3f, 0xef,
-    		0x1a, 0x0c, 0x91, 0xba, 0x20, 0xcc,
-		0x00, 0xc0, 0xc1, 0xa5},
+	   0x79, 0x3d, 0x64, 0x9e, 0x3f, 0xef,
+	   0x1a, 0x0c, 0x91, 0xba, 0x20, 0xcc,
+	   0x00, 0xc0, 0xc1, 0xa5},
 };
 
 const ble_uuid128_t NXSWirelessClient::control_characteristic = {
     .u	 = {.type = BLE_UUID_TYPE_128},
     .value = {
-		0x79, 0x3d, 0x64, 0x9e, 0x3f, 0xef,
-    		0x1a, 0x0c, 0x91, 0xba, 0x20, 0xcc,
-		0x01, 0xcc, 0xc1, 0xa5},
+	   0x79, 0x3d, 0x64, 0x9e, 0x3f, 0xef,
+	   0x1a, 0x0c, 0x91, 0xba, 0x20, 0xcc,
+	   0x01, 0xcc, 0xc1, 0xa5},
 };
 
 const ble_uuid128_t NXSWirelessClient::auth_characteristic = {
     .u	 = {.type = BLE_UUID_TYPE_128},
     .value = {
-		0x79, 0x3d, 0x64, 0x9e, 0x3f, 0xef,
-    		0x1a, 0x0c, 0x91, 0xba, 0x20, 0xcc,
-		0x02, 0xcc, 0xc1, 0xa5},
+	   0x79, 0x3d, 0x64, 0x9e, 0x3f, 0xef,
+	   0x1a, 0x0c, 0x91, 0xba, 0x20, 0xcc,
+	   0x02, 0xcc, 0xc1, 0xa5},
 };
 
- uint8_t NXSWirelessClient::command_shift_up[8] = {0x10, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
- uint8_t NXSWirelessClient::command_shift_down[8] = {0x11, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+uint8_t NXSWirelessClient::command_shift_up[8]   = {0x10, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+uint8_t NXSWirelessClient::command_shift_down[8] = {0x11, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
 NXSWirelessClient::NXSWirelessClient(const char *peer_address) {
 	address.type = BLE_ADDR_RANDOM;
@@ -42,8 +42,8 @@ NXSWirelessClient::NXSWirelessClient(const char *peer_address) {
 		  &address.val[0], &address.val[1], &address.val[2],
 		  &address.val[3], &address.val[4], &address.val[5]);
 
-	for(int i=0; i<6; i++) {
-		command_shift_up[2 + i] = address.val[i];
+	for (int i = 0; i < 6; i++) {
+		command_shift_up[2 + i]	 = address.val[i];
 		command_shift_down[2 + i] = address.val[i];
 	}
 
@@ -70,13 +70,13 @@ int NXSWirelessClient::send(const uint8_t *command, size_t length) {
 	};
 
 	central->write((const ble_uuid_t *)&service, (const ble_uuid_t *)&control_characteristic,
-		command, length, 10000,
-		callback);
+				command, length, 10000,
+				callback);
 
 	return 0;
 }
 
-bool NXSWirelessClient::connect(const uint8_t * pin) {
+bool NXSWirelessClient::connect(const uint8_t *pin) {
 	static callback_args_t *args = nullptr;
 
 	if (args != nullptr) {
@@ -84,18 +84,18 @@ bool NXSWirelessClient::connect(const uint8_t * pin) {
 		return 1;
 	}
 
-	args = new callback_args_t();
-	args->address		  = &address;
-	args->central		  = central;
-	args->service		  = (const ble_uuid_t *)&service;
-	args->characteristic  = (const ble_uuid_t *)&auth_characteristic;
-	args->command		  = pin;
-	args->length		  = 4;
+	args				 = new callback_args_t();
+	args->address		 = &address;
+	args->central		 = central;
+	args->service		 = (const ble_uuid_t *)&service;
+	args->characteristic = (const ble_uuid_t *)&auth_characteristic;
+	args->command		 = pin;
+	args->length		 = 4;
 
 	ESP_LOGI(tag, "start connect");
 
 	args->callback = [](uint16_t handle, NimbleCallbackReason reason) {
-		switch(reason) {
+		switch (reason) {
 			case NimbleCallbackReason::SUCCESS:
 				ESP_LOGI(tag, "command write success");
 				delete args;
@@ -115,8 +115,8 @@ bool NXSWirelessClient::connect(const uint8_t * pin) {
 			case NimbleCallbackReason::CONNECTION_ESTABLISHED:
 				ESP_LOGI(tag, "connected, start write");
 				args->central->write(args->service, args->characteristic,
-						args->command, args->length, 10000,
-						args->callback);
+								 args->command, args->length, 10000,
+								 args->callback);
 				break;
 			case NimbleCallbackReason::UNKNOWN:
 				ESP_LOGI(tag, "Yobarenai hazu");
@@ -124,11 +124,15 @@ bool NXSWirelessClient::connect(const uint8_t * pin) {
 		}
 		return 0;
 	};
-	
+
 	args->central->connect(args->address, args->callback);
 
 	return 0;
+}
 
+bool NXSWirelessClient::disconnect() {
+	if (central->disconnect()) return false;
+	return true;
 }
 
 bool NXSWirelessClient::send_async(const uint8_t *command, size_t length) {
@@ -139,24 +143,24 @@ bool NXSWirelessClient::send_async(const uint8_t *command, size_t length) {
 		return false;
 	}
 
-	args = new callback_args_t();
-	args->address		  = &address;
-	args->central		  = central;
-	args->service		  = (const ble_uuid_t *)&service;
-	args->characteristic  = (const ble_uuid_t *)&control_characteristic;
-	args->command		  = command;
-	args->length		  = length;
+	args				 = new callback_args_t();
+	args->address		 = &address;
+	args->central		 = central;
+	args->service		 = (const ble_uuid_t *)&service;
+	args->characteristic = (const ble_uuid_t *)&control_characteristic;
+	args->command		 = command;
+	args->length		 = length;
 
 	ESP_LOGI(tag, "start connect");
 
 	static int try_count;
 	static bool writed;
-	
+
 	try_count = 0;
-	writed = false;
+	writed	= false;
 
 	args->callback = [](uint16_t handle, NimbleCallbackReason reason) {
-		switch(reason) {
+		switch (reason) {
 			case NimbleCallbackReason::SUCCESS:
 				ESP_LOGI(tag, "command write success");
 				writed = true;
@@ -175,8 +179,8 @@ bool NXSWirelessClient::send_async(const uint8_t *command, size_t length) {
 			case NimbleCallbackReason::CONNECTION_ESTABLISHED:
 				ESP_LOGI(tag, "connected, start write");
 				args->central->write(args->service, args->characteristic,
-						args->command, args->length, 10000,
-						args->callback);
+								 args->command, args->length, 10000,
+								 args->callback);
 				break;
 			case NimbleCallbackReason::UNKNOWN:
 				ESP_LOGI(tag, "Yobarenai hazu");

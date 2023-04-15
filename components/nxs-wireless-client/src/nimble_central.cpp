@@ -254,6 +254,11 @@ int NimbleCentral::connect(const ble_addr_t *address, NimbleCallback callback) {
 	return rc;
 }
 
+int NimbleCentral::disconnect() {
+	if (handle) return ble_gap_terminate(handle, BLE_ERR_REM_USER_CONN_TERM);
+	return 0;
+}
+
 int NimbleCentral::chr_disced(uint16_t conn_handle, const struct ble_gatt_error *error,
 						const struct ble_gatt_chr *chr, void *arg) {
 	int rc;

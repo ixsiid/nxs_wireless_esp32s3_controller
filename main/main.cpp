@@ -49,20 +49,19 @@ void app_main(void) {
 	}
 	ESP_ERROR_CHECK(ret);
 
-	// static NXSWirelessClient *nxs = new NXSWirelessClient(NXS_MAC);
-	// nxs->connect(NXS_PIN);
+	static NXSWirelessClient *nxs = new NXSWirelessClient(NXS_MAC);
+	nxs->connect(NXS_PIN);
 
 	// LED
+	static TickType_t led_dis = 0xffffffff;
 	static RMT_WS2812 *led = new RMT_WS2812(RMT_WS2812::esp_board::ATOMS3_lite);
 	led->clear();
 
-	led->setBrightness(CONFIG_MAX_BRIGHTNESS);
-
 	// 起動時に青で点滅
 	led->setPixel(0, 0, 0, 255);
+	led->setBrightness(CONFIG_MAX_BRIGHTNESS);
 	led->refresh();
-	vTaskDelay(200 / portTICK_PERIOD_MS);
-	led->clear();
+	led_dis = xTaskGetTickCount() + 2000 / portTICK_PERIOD_MS;
 
 	// ATOMS3
 	/// G6をGND代わりに使う
@@ -77,20 +76,29 @@ void app_main(void) {
 	const uint8_t buttonPins[] = {high_pin, low_pin};
 	static Button *button	  = new Button(buttonPins, sizeof(buttonPins));
 
-	static bool lighting;
 	while (true) {
 		// Main loop
 		vTaskDelay(50 / portTICK_RATE_MS);
+		TickType_t now = xTaskGetTickCount();
+		if (now > led_dis) {
+			ESP_LOGI(tag, "led clear");
+			led->clear();
+			led_dis = 0xffffffff;
+		}
 
 		button->check(nullptr, [](uint8_t pin) {
 			switch (pin) {
 				case high_pin:
 					ESP_LOGI(tag, "button: high");
-					// nxs->up();
+					// nxs->connect(NXS_PIN);
+					nxs->up();
+					// nxs->disconnect();
 					break;
 				case low_pin:
 					ESP_LOGI(tag, "button: low");
-					// nxs->down();
+					// nxs->connect(NXS_PIN);
+					nxs->down();
+					// nxs->disconnect();
 					break;
 			}
 		});

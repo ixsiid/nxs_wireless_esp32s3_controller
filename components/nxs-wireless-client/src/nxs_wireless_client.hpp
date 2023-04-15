@@ -19,6 +19,7 @@ private:
 public:
 	NXSWirelessClient(const char * peer_address);
 	bool connect(const uint8_t * pin);
+	bool disconnect();
 	int up();
 	int down();
 
