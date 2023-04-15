@@ -77,7 +77,8 @@ void app_main(void) {
 	const uint8_t buttonPins[] = {high_pin, low_pin, debug_pin};
 	static Button *button	  = new Button(buttonPins, sizeof(buttonPins));
 
-		const TickType_t wait = 10000 / portTICK_PERIOD_MS;
+	const TickType_t wait1 = 10 / portTICK_PERIOD_MS;
+	const TickType_t wait  = 1000 / portTICK_PERIOD_MS;
 
 	while (true) {
 		// Main loop
@@ -93,18 +94,20 @@ void app_main(void) {
 			switch (pin) {
 				case high_pin:
 					ESP_LOGI(tag, "button: high");
-					nxs->connect(NXS_PIN);
-					vTaskDelay(wait);
-					nxs->up();
+					if (nxs->connect(NXS_PIN)) {
+						vTaskDelay(wait1);
+						nxs->up();
+					}
 					vTaskDelay(wait);
 					nxs->disconnect();
 					led->setPixel(0, 255, 0, 0);
 					break;
 				case low_pin:
 					ESP_LOGI(tag, "button: low");
-					nxs->connect(NXS_PIN);
-					vTaskDelay(wait);
-					nxs->down();
+					if (nxs->connect(NXS_PIN)) {
+						vTaskDelay(wait1);
+						nxs->down();
+					}
 					vTaskDelay(wait);
 					nxs->disconnect();
 					led->setPixel(0, 0, 255, 0);
@@ -112,6 +115,8 @@ void app_main(void) {
 				case debug_pin:
 					ESP_LOGI(tag, "button: debug");
 					led->setPixel(0, 0, 0, 255);
+					nxs->connect(NXS_PIN);
+					nxs->disconnect();
 			}
 			led->refresh();
 			led_dis = xTaskGetTickCount() + 500 / portTICK_PERIOD_MS;

@@ -8,6 +8,7 @@
 enum class NimbleCallbackReason {
 	UNKNOWN = 0,
 	SUCCESS,
+	DONE,
 	CHARACTERISTIC_WRITE_FAILED,
 	CHARACTERISTIC_FIND_FAILED,
 	SERVICE_FIND_FAILED,
@@ -38,6 +39,9 @@ class NimbleCentral {
 
 	static int blecent_gap_event(struct ble_gap_event *event, void *arg);
 
+
+	static uint16_t latest_start_svc_handle, latest_end_svc_handle, latest_conn_handle;
+
     public:
 	static int start(const char *device_name);
 	static int connect(const ble_addr_t *address, NimbleCallback callback);
@@ -45,4 +49,8 @@ class NimbleCentral {
 	static int write(const ble_uuid_t *service, const ble_uuid_t *characteristic,
 				  const uint8_t *value, size_t length, int timeout,
 				  NimbleCallback callback);
+	static int write(const ble_uuid_t *characteristic,
+				  const uint8_t *value, size_t length, int timeout,
+				  NimbleCallback callback);
+				  
 };

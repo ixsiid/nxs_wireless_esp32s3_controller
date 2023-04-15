@@ -36,6 +36,8 @@ const ble_uuid128_t NXSWirelessClient::auth_characteristic = {
 uint8_t NXSWirelessClient::command_shift_up[8]   = {0x10, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 uint8_t NXSWirelessClient::command_shift_down[8] = {0x11, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
 
+EventGroupHandle_t NXSWirelessClient::event_group = xEventGroupCreate();
+
 NXSWirelessClient::NXSWirelessClient(const char *peer_address) {
 	address.type = BLE_ADDR_RANDOM;
 	sscanf(peer_address, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx",
@@ -65,6 +67,7 @@ typedef struct {
 } callback_args_t;
 
 int NXSWirelessClient::send(const uint8_t *command, size_t length) {
+	/*
 	NimbleCallback callback = [](uint16_t, NimbleCallbackReason) {
 		return 0;
 	};
@@ -72,6 +75,10 @@ int NXSWirelessClient::send(const uint8_t *command, size_t length) {
 	central->write((const ble_uuid_t *)&service, (const ble_uuid_t *)&control_characteristic,
 				command, length, 10000,
 				callback);
+
+	*/
+	ESP_LOGI(tag, "start up or down");
+	central->write((const ble_uuid_t *)&control_characteristic, command, length, 10000, nullptr);
 
 	return 0;
 }
@@ -83,6 +90,8 @@ bool NXSWirelessClient::connect(const uint8_t *pin) {
 		ESP_LOGI(tag, "busy");
 		return 1;
 	}
+
+	xEventGroupClearBits(event_group, 0xffffff);
 
 	args				 = new callback_args_t();
 	args->address		 = &address;
@@ -100,6 +109,7 @@ bool NXSWirelessClient::connect(const uint8_t *pin) {
 				ESP_LOGI(tag, "command write success");
 				delete args;
 				args = nullptr;
+				xEventGroupSetBits(event_group, EVENT_CONNECTED);
 				break;
 			case NimbleCallbackReason::CONNECTION_START:
 			case NimbleCallbackReason::CHARACTERISTIC_WRITE_FAILED:
@@ -111,6 +121,8 @@ bool NXSWirelessClient::connect(const uint8_t *pin) {
 				ESP_LOGI(tag, "command failed");
 				delete args;
 				args = nullptr;
+				xEventGroupSetBits(event_group, EVENT_FAILED);
+				xEventGroupSetBits(event_group, EVENT_DONE);
 				break;
 			case NimbleCallbackReason::CONNECTION_ESTABLISHED:
 				ESP_LOGI(tag, "connected, start write");
@@ -121,13 +133,24 @@ bool NXSWirelessClient::connect(const uint8_t *pin) {
 			case NimbleCallbackReason::UNKNOWN:
 				ESP_LOGI(tag, "Yobarenai hazu");
 				break;
+			case NimbleCallbackReason::DONE:
+				xEventGroupSetBits(event_group, EVENT_DONE);
+				break;
 		}
 		return 0;
 	};
 
 	args->central->connect(args->address, args->callback);
 
-	return 0;
+	EventBits_t b = xEventGroupWaitBits(event_group,
+								 EVENT_DONE,
+								 true, false, portMAX_DELAY);
+
+	ESP_LOGI(tag, "Connection finish: %d", b);
+	if (b & EVENT_FAILED) return false;
+	if (b & EVENT_CONNECTED) return true;
+
+	return false;
 }
 
 bool NXSWirelessClient::disconnect() {
@@ -184,6 +207,8 @@ bool NXSWirelessClient::send_async(const uint8_t *command, size_t length) {
 				break;
 			case NimbleCallbackReason::UNKNOWN:
 				ESP_LOGI(tag, "Yobarenai hazu");
+				break;
+			case NimbleCallbackReason::DONE:
 				break;
 		}
 		return 0;

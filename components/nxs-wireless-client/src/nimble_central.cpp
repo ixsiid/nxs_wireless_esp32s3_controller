@@ -273,14 +273,16 @@ int NimbleCentral::chr_disced(uint16_t conn_handle, const struct ble_gatt_error 
 			client->found_characteristic = true;
 
 			rc = ble_gattc_write_no_rsp_flat(conn_handle, chr->val_handle, client->value, client->length);
-			client->callback(conn_handle, rc == 0 ? NimbleCallbackReason::SUCCESS : NimbleCallbackReason::CHARACTERISTIC_WRITE_FAILED);
+			if (client->callback != nullptr) client->callback(conn_handle, rc == 0 ? NimbleCallbackReason::SUCCESS : NimbleCallbackReason::CHARACTERISTIC_WRITE_FAILED);
 			if (rc == 0) ESP_LOGI(tag, "success");
-	
+
 			break;
 
+		case BLE_HS_EDONE:
+			ESP_LOGI(tag, "chr EDONE");
+			if (client->callback != nullptr) client->callback(conn_handle, NimbleCallbackReason::DONE);
 		case BLE_HS_EALREADY:
 		case BLE_HS_EBUSY:
-		case BLE_HS_EDONE:
 		default:
 			rc = error->status;
 			break;
@@ -290,7 +292,7 @@ int NimbleCentral::chr_disced(uint16_t conn_handle, const struct ble_gatt_error 
 		ESP_LOGE(tag, "Failed find chr or write characteristic");
 
 		if (client->callback != nullptr) client->callback(conn_handle, NimbleCallbackReason::CHARACTERISTIC_FIND_FAILED);
-		
+
 		// delete arg;
 		delete client;
 	}
@@ -311,6 +313,10 @@ int NimbleCentral::svc_disced(uint16_t conn_handle, const struct ble_gatt_error 
 	switch (error->status) {
 		case 0:  // Success
 			client->found_service = true;
+
+			latest_conn_handle = conn_handle;
+			latest_start_svc_handle = service->start_handle;
+			latest_end_svc_handle = service->end_handle;
 
 			rc = ble_gattc_disc_chrs_by_uuid(conn_handle, service->start_handle, service->end_handle,
 									   client->characteristic, chr_disced, client);
@@ -358,6 +364,31 @@ int NimbleCentral::write(const ble_uuid_t *service, const ble_uuid_t *characteri
 	arg->length			  = length;
 
 	rc = ble_gattc_disc_svc_by_uuid(handle, service, svc_disced, arg);
+
+	if (rc != 0) {
+		ESP_LOGI(tag, "Failed find characteristics");
+	}
+
+	return rc;
+}
+
+uint16_t NimbleCentral::latest_start_svc_handle = 0;
+uint16_t NimbleCentral::latest_end_svc_handle = 0;
+uint16_t NimbleCentral::latest_conn_handle = 0;
+
+int NimbleCentral::write(const ble_uuid_t *characteristic,
+					const uint8_t *value, size_t length, int timeout,
+					NimbleCallback callback) {
+	int rc;
+	gattc_callback_args_t *arg = new gattc_callback_args_t();
+	arg->callback			  = callback;
+	arg->found_characteristic  = false;
+	arg->value			  = value;
+	arg->length			  = length;
+
+	rc = ble_gattc_disc_chrs_by_uuid(latest_conn_handle,
+							   latest_start_svc_handle, latest_end_svc_handle,
+							   characteristic, chr_disced, arg);
 
 	if (rc != 0) {
 		ESP_LOGI(tag, "Failed find characteristics");
