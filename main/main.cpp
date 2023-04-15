@@ -35,7 +35,7 @@ void app_main();
 
 #include "RMT_WS2812.hpp"
 
-#define CONFIG_MAX_BRIGHTNESS  20
+#define CONFIG_MAX_BRIGHTNESS 20
 
 void app_main(void) {
 	ESP_LOGI(tag, "Start");
@@ -49,55 +49,50 @@ void app_main(void) {
 	}
 	ESP_ERROR_CHECK(ret);
 
-	// static NXSWirelessClient *sb = new NXSWirelessClient(NXS_MAC);
-	// sb->connect(NXS_PIN);
+	// static NXSWirelessClient *nxs = new NXSWirelessClient(NXS_MAC);
+	// nxs->connect(NXS_PIN);
 
 	// LED
-	RMT_WS2812 *led = new RMT_WS2812(RMT_WS2812::esp_board::ATOMS3_lite);
-	ESP_LOGI(tag, "%p", led);
+	static RMT_WS2812 *led = new RMT_WS2812(RMT_WS2812::esp_board::ATOMS3_lite);
 	led->clear();
-	/*
+
+	led->setBrightness(CONFIG_MAX_BRIGHTNESS);
+
+	// 起動時に青で点滅
+	led->setPixel(0, 0, 0, 255);
+	led->refresh();
+	vTaskDelay(200 / portTICK_PERIOD_MS);
+	led->clear();
 
 	// ATOMS3
-	const uint8_t buttonPins[] = {41, 1, 2};
-	static Button *button = new Button(buttonPins, sizeof(buttonPins));
+	/// G6をGND代わりに使う
+	const gpio_num_t gnd_pin = gpio_num_t::GPIO_NUM_5;
+	gpio_set_direction(gnd_pin, gpio_mode_t::GPIO_MODE_OUTPUT);
+	gpio_set_level(gnd_pin, 0);
 
-	xTaskCreatePinnedToCore([](void *_) {
-		while (true) {
-			// Main loop
-			vTaskDelay(100 / portTICK_RATE_MS);
+	/// High, Lowボタンのピン番号
+	const uint8_t high_pin = 6;
+	const uint8_t low_pin  = 7;
 
-			button->check(nullptr, [&](uint8_t pin) {
-				switch (pin) {
-					case 1:
-						ESP_LOGI(tag, "released gpio 1");
-						// sb->up();
-						break;
-					case 2:
-						ESP_LOGI(tag, "released gpio 2");
-						// sb->down();
-						break;
-					case 41:
-						ESP_LOGI(tag, "released gpio 41");
-						break;
-				}
-			});
-		}
-	}, "ButtonCheck", 4096, nullptr, 1, nullptr, 1);
+	const uint8_t buttonPins[] = {high_pin, low_pin};
+	static Button *button	  = new Button(buttonPins, sizeof(buttonPins));
 
-	*/
-	int color = 0;
+	static bool lighting;
 	while (true) {
-		vTaskDelay(1000 / portTICK_PERIOD_MS);
-		ESP_LOGD(tag, "Idleing");
-		
-		led->setPixel(0, 
-			color & 0b001 ? 255 : 0,
-			color & 0b010 ? 255 : 0,
-			color & 0b100 ? 255 : 0);
-		led->setBrightness(CONFIG_MAX_BRIGHTNESS);
-		led->refresh();
-		++color;
-		ESP_LOGI(tag, "color: %d", color);
+		// Main loop
+		vTaskDelay(50 / portTICK_RATE_MS);
+
+		button->check(nullptr, [](uint8_t pin) {
+			switch (pin) {
+				case high_pin:
+					ESP_LOGI(tag, "button: high");
+					// nxs->up();
+					break;
+				case low_pin:
+					ESP_LOGI(tag, "button: low");
+					// nxs->down();
+					break;
+			}
+		});
 	}
 }
