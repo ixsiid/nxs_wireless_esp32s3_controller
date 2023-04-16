@@ -67,20 +67,47 @@ typedef struct {
 } callback_args_t;
 
 int NXSWirelessClient::send(const uint8_t *command, size_t length) {
-	/*
-	NimbleCallback callback = [](uint16_t, NimbleCallbackReason) {
+	xEventGroupClearBits(event_group, 0xffffff);
+	auto callback = [](uint16_t handle, NimbleCallbackReason reason) {
+		switch (reason) {
+			case NimbleCallbackReason::SUCCESS:
+				xEventGroupSetBits(event_group, EVENT_CHR_WRITED);
+				break;
+			case NimbleCallbackReason::DONE:
+				xEventGroupSetBits(event_group, EVENT_DONE);
+				break;
+			case NimbleCallbackReason::CONNECTION_START:
+			case NimbleCallbackReason::CHARACTERISTIC_WRITE_FAILED:
+			case NimbleCallbackReason::CHARACTERISTIC_FIND_FAILED:
+			case NimbleCallbackReason::SERVICE_FIND_FAILED:
+			case NimbleCallbackReason::STOP_CANCEL_FAILED:
+			case NimbleCallbackReason::CONNECTION_FAILED:
+			case NimbleCallbackReason::CONNECTION_ESTABLISHED: // 既にConnectionされているため
+			case NimbleCallbackReason::OTHER_FAILED:
+				ESP_LOGI(tag, "send failed");
+				xEventGroupSetBits(event_group, EVENT_FAILED);
+				xEventGroupSetBits(event_group, EVENT_DONE);
+				break;
+			case NimbleCallbackReason::UNKNOWN:
+				ESP_LOGI(tag, "Yobarenai hazu");
+				break;
+		}
 		return 0;
 	};
 
-	central->write((const ble_uuid_t *)&service, (const ble_uuid_t *)&control_characteristic,
-				command, length, 10000,
-				callback);
+	int e = central->write((const ble_uuid_t *)&service, (const ble_uuid_t *)&control_characteristic,
+					   command, length, 10000,
+					   callback);
 
-	*/
-	ESP_LOGI(tag, "start up or down");
-	central->write((const ble_uuid_t *)&control_characteristic, command, length, 10000, nullptr);
+	EventBits_t b = xEventGroupWaitBits(event_group,
+								 EVENT_DONE,
+								 true, false, portMAX_DELAY);
 
-	return 0;
+	ESP_LOGI(tag, "Connection finish: %d", b);
+	if (b & EVENT_FAILED) return false;
+	if (b & EVENT_CHR_WRITED) return true;
+
+	return false;
 }
 
 bool NXSWirelessClient::connect(const uint8_t *pin) {
@@ -158,72 +185,8 @@ bool NXSWirelessClient::disconnect() {
 	return true;
 }
 
-bool NXSWirelessClient::send_async(const uint8_t *command, size_t length) {
-	static callback_args_t *args = nullptr;
-
-	if (args != nullptr) {
-		ESP_LOGI(tag, "busy");
-		return false;
-	}
-
-	args				 = new callback_args_t();
-	args->address		 = &address;
-	args->central		 = central;
-	args->service		 = (const ble_uuid_t *)&service;
-	args->characteristic = (const ble_uuid_t *)&control_characteristic;
-	args->command		 = command;
-	args->length		 = length;
-
-	ESP_LOGI(tag, "start connect");
-
-	static int try_count;
-	static bool writed;
-
-	try_count = 0;
-	writed	= false;
-
-	args->callback = [](uint16_t handle, NimbleCallbackReason reason) {
-		switch (reason) {
-			case NimbleCallbackReason::SUCCESS:
-				ESP_LOGI(tag, "command write success");
-				writed = true;
-				break;
-			case NimbleCallbackReason::CONNECTION_START:
-			case NimbleCallbackReason::CHARACTERISTIC_WRITE_FAILED:
-			case NimbleCallbackReason::CHARACTERISTIC_FIND_FAILED:
-			case NimbleCallbackReason::SERVICE_FIND_FAILED:
-			case NimbleCallbackReason::STOP_CANCEL_FAILED:
-			case NimbleCallbackReason::CONNECTION_FAILED:
-			case NimbleCallbackReason::OTHER_FAILED:
-				if (++try_count > 3) return 1;
-				ESP_LOGI(tag, "start connecting");
-				args->central->connect(args->address, args->callback);
-				break;
-			case NimbleCallbackReason::CONNECTION_ESTABLISHED:
-				ESP_LOGI(tag, "connected, start write");
-				args->central->write(args->service, args->characteristic,
-								 args->command, args->length, 10000,
-								 args->callback);
-				break;
-			case NimbleCallbackReason::UNKNOWN:
-				ESP_LOGI(tag, "Yobarenai hazu");
-				break;
-			case NimbleCallbackReason::DONE:
-				break;
-		}
-		return 0;
-	};
-
-	args->callback(0, NimbleCallbackReason::CONNECTION_START);
-
-	while (try_count < 3 && !writed) {
-		ESP_LOGI(tag, "Try...");
-		vTaskDelay(1000 / portTICK_PERIOD_MS);
-	}
-
-	ESP_LOGI(tag, "Writing result: %d, by %d try", writed, try_count);
-	delete args;
-	args = nullptr;
-
-	return writed;
+bool NXSWirelessClient::connect_send_disconnect(const uint8_t *pin, const uint8_t *command, size_t length) {
+	if (!connect(pin)) return false;
+	if (!send(command, length)) return false;
+	return disconnect();
 }
