@@ -76,17 +76,20 @@ int NXSWirelessClient::send(const uint8_t *command, size_t length) {
 			case NimbleCallbackReason::DONE:
 				xEventGroupSetBits(event_group, EVENT_DONE);
 				break;
-			case NimbleCallbackReason::CONNECTION_START:
 			case NimbleCallbackReason::CHARACTERISTIC_WRITE_FAILED:
 			case NimbleCallbackReason::CHARACTERISTIC_FIND_FAILED:
 			case NimbleCallbackReason::SERVICE_FIND_FAILED:
 			case NimbleCallbackReason::STOP_CANCEL_FAILED:
 			case NimbleCallbackReason::CONNECTION_FAILED:
-			case NimbleCallbackReason::CONNECTION_ESTABLISHED: // 既にConnectionされているため
 			case NimbleCallbackReason::OTHER_FAILED:
 				ESP_LOGI(tag, "send failed");
 				xEventGroupSetBits(event_group, EVENT_FAILED);
 				xEventGroupSetBits(event_group, EVENT_DONE);
+				break;
+			case NimbleCallbackReason::CONNECTION_START:
+			case NimbleCallbackReason::CONNECTION_ESTABLISHED:
+			case NimbleCallbackReason::DISCONNECT:
+				ESP_LOGI(tag, "nanimoshinai: %d", static_cast<int>(reason));
 				break;
 			case NimbleCallbackReason::UNKNOWN:
 				ESP_LOGI(tag, "Yobarenai hazu");
@@ -95,9 +98,9 @@ int NXSWirelessClient::send(const uint8_t *command, size_t length) {
 		return 0;
 	};
 
-	int e = central->write((const ble_uuid_t *)&service, (const ble_uuid_t *)&control_characteristic,
-					   command, length, 10000,
-					   callback);
+	central->write((const ble_uuid_t *)&service, (const ble_uuid_t *)&control_characteristic,
+				command, length, 10000,
+				callback);
 
 	EventBits_t b = xEventGroupWaitBits(event_group,
 								 EVENT_DONE,
@@ -159,6 +162,9 @@ bool NXSWirelessClient::connect(const uint8_t *pin) {
 				break;
 			case NimbleCallbackReason::UNKNOWN:
 				ESP_LOGI(tag, "Yobarenai hazu");
+				break;
+			case NimbleCallbackReason::DISCONNECT:
+				ESP_LOGI(tag, "disconnected");
 				break;
 			case NimbleCallbackReason::DONE:
 				xEventGroupSetBits(event_group, EVENT_DONE);

@@ -109,7 +109,8 @@ void app_main(void) {
 					ESP_LOGI(tag, "button: debug");
 					led->setPixel(0, 0, 0, 255);
 					led->refresh();
-					nxs->connect(NXS_PIN);
+					// nxs->connect(NXS_PIN);
+					nxs->up();
 					nxs->disconnect();
 			}
 			led_dis = xTaskGetTickCount() + 500 / portTICK_PERIOD_MS;

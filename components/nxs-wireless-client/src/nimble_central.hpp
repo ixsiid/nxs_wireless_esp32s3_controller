@@ -18,6 +18,7 @@ enum class NimbleCallbackReason {
 	// 途中経過
 	CONNECTION_START,
 	CONNECTION_ESTABLISHED,
+	DISCONNECT,
 };
 
 typedef int (*NimbleCallback)(uint16_t, NimbleCallbackReason);
@@ -27,9 +28,6 @@ class NimbleCentral {
 	static bool is_started;
 	static uint16_t handle;
 
-	static void blecent_on_reset(int reason);
-	static void blecent_on_sync();
-	static void blecent_host_task(void *param);
 	static void blecent_scan();
 
 	static int chr_disced(uint16_t conn_handle, const struct ble_gatt_error *error,
@@ -39,17 +37,11 @@ class NimbleCentral {
 
 	static int blecent_gap_event(struct ble_gap_event *event, void *arg);
 
-
-	static uint16_t latest_start_svc_handle, latest_end_svc_handle, latest_conn_handle;
-
     public:
 	static int start(const char *device_name);
 	static int connect(const ble_addr_t *address, NimbleCallback callback);
 	static int disconnect();
 	static int write(const ble_uuid_t *service, const ble_uuid_t *characteristic,
-				  const uint8_t *value, size_t length, int timeout,
-				  NimbleCallback callback);
-	static int write(const ble_uuid_t *characteristic,
 				  const uint8_t *value, size_t length, int timeout,
 				  NimbleCallback callback);
 				  
