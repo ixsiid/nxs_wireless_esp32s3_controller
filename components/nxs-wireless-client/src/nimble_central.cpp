@@ -93,6 +93,12 @@ int NimbleCentral::blecent_gap_event(struct ble_gap_event *event, void *arg) {
 			if (event->connect.status == 0) {
 				/* Connection successfully established. */
 				ESP_LOGI(tag, "BLE_GAP_EVENT_CONNECT: success");
+				
+				// conn_handleが常に0なのが謎
+				// 何かの拍子に non zero となった時にすぐ分かるようのアサーション
+				// ble_gattc_disc_svc_by_uuid と ble_gap_terminate の引数に影響する
+				assert(event->connect.conn_handle == 0);
+
 				rc = ble_gap_conn_find(event->connect.conn_handle, &desc);
 				if (callback) callback(event->connect.conn_handle, NimbleCallbackReason::CONNECTION_ESTABLISHED);
 			} else {
