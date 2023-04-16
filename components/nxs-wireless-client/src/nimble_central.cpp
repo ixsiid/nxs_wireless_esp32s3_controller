@@ -198,6 +198,7 @@ int NimbleCentral::connect(const ble_addr_t *address, NimbleCallback callback) {
 
 	ESP_LOGI(tag, "connect args: %p", callback);
 	rc = ble_gap_connect(0, address, 4000, nullptr, blecent_gap_event, (void *)callback);
+	if (rc && callback) callback(0x0000, NimbleCallbackReason::CONNECTION_FAILED);
 
 	return rc;
 }
@@ -268,10 +269,10 @@ int NimbleCentral::svc_disced(uint16_t conn_handle, const struct ble_gatt_error 
 			client->service_end_handle   = service->end_handle;
 			break;
 
-		// この↓2つのいずれかが必ず呼ばれる
+		// ENOTCONNが呼ばれたときに、EDONEが呼ばれないかは不明
 		case BLE_HS_ENOTCONN:
 			ESP_LOGI(tag, "not connection: %d", conn_handle);
-			if (client->callback != nullptr) client->callback(conn_handle, NimbleCallbackReason::CONNECTION_FAILED);
+			if (client->callback) client->callback(conn_handle, NimbleCallbackReason::CONNECTION_FAILED);
 			delete client;
 			break;
 		case BLE_HS_EDONE:
@@ -285,7 +286,7 @@ int NimbleCentral::svc_disced(uint16_t conn_handle, const struct ble_gatt_error 
 			} else {
 				ESP_LOGE(tag, "Couldn't find service uuid.");
 				ble_gap_terminate(conn_handle, BLE_ERR_REM_USER_CONN_TERM);
-				if (client->callback != nullptr) client->callback(conn_handle, NimbleCallbackReason::SERVICE_FIND_FAILED);
+				if (client->callback) client->callback(conn_handle, NimbleCallbackReason::SERVICE_FIND_FAILED);
 				rc = error->status;
 
 				// delete arg;
@@ -322,6 +323,7 @@ int NimbleCentral::write(const ble_uuid_t *service, const ble_uuid_t *characteri
 
 	if (rc != 0) {
 		ESP_LOGI(tag, "Failed find characteristics");
+		if (callback) callback(0x0000, NimbleCallbackReason::CONNECTION_FAILED);
 	}
 
 	return rc;
