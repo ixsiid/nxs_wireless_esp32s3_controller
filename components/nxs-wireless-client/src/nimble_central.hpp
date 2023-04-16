@@ -26,7 +26,6 @@ typedef int (*NimbleCallback)(uint16_t, NimbleCallbackReason);
 class NimbleCentral {
     private:
 	static bool is_started;
-	static uint16_t handle;
 
 	static int chr_disced(uint16_t conn_handle, const struct ble_gatt_error *error,
 					  const struct ble_gatt_chr *chr, void *arg);

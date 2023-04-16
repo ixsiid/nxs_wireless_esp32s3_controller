@@ -14,10 +14,6 @@
 
 const char *tag = "NimBleCentral";
 
-typedef struct {
-} callback_args_t;
-
-uint16_t NimbleCentral::handle = 0x0000;
 bool NimbleCentral::is_started = false;
 
 int NimbleCentral::start(const char *device_name) {
@@ -96,17 +92,8 @@ int NimbleCentral::blecent_gap_event(struct ble_gap_event *event, void *arg) {
 			/* A new connection was established or a connection attempt failed. */
 			if (event->connect.status == 0) {
 				/* Connection successfully established. */
-				// ESP_LOGI(tag, "Connect");
-				// MOOG_DFLT(INFO, "Connection established ");
-
+				ESP_LOGI(tag, "BLE_GAP_EVENT_CONNECT: success");
 				rc = ble_gap_conn_find(event->connect.conn_handle, &desc);
-				// assert(rc == 0);
-				// print_conn_desc(&desc);
-				// MODLOG_DFLT(INFO, "\n");
-
-				handle = event->connect.conn_handle;
-
-				// ESP_LOGI(tag, "callback function by connect: %d, %p", event->connect.conn_handle, callback);
 				if (callback) callback(event->connect.conn_handle, NimbleCallbackReason::CONNECTION_ESTABLISHED);
 			} else {
 				/* Connection attempt failed; resume scanning. */
@@ -156,7 +143,9 @@ int NimbleCentral::connect(const ble_addr_t *address, NimbleCallback callback) {
 }
 
 int NimbleCentral::disconnect() {
-	if (handle) return ble_gap_terminate(handle, BLE_ERR_REM_USER_CONN_TERM);
+	ESP_LOGI(tag, "disconnect");
+	// handleが常に0なのは謎
+	ble_gap_terminate(0x0000, BLE_ERR_REM_USER_CONN_TERM);
 	return 0;
 }
 
@@ -271,7 +260,8 @@ int NimbleCentral::write(const ble_uuid_t *service, const ble_uuid_t *characteri
 	arg->value			  = value;
 	arg->length			  = length;
 
-	rc = ble_gattc_disc_svc_by_uuid(handle, service, svc_disced, arg);
+	// handleが常に0なのは謎
+	rc = ble_gattc_disc_svc_by_uuid(0x0000, service, svc_disced, arg);
 
 	if (rc != 0) {
 		ESP_LOGI(tag, "Failed find characteristics");
