@@ -148,7 +148,7 @@ bool NXSWirelessClient::connect(const uint8_t *pin) {
 			case NimbleCallbackReason::STOP_CANCEL_FAILED:
 			case NimbleCallbackReason::CONNECTION_FAILED:
 			case NimbleCallbackReason::OTHER_FAILED:
-				ESP_LOGI(tag, "command failed");
+				ESP_LOGI(tag, "command failed: %d", static_cast<int>(reason));
 				delete args;
 				args = nullptr;
 				xEventGroupSetBits(event_group, EVENT_FAILED);

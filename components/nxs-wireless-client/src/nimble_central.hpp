@@ -28,8 +28,6 @@ class NimbleCentral {
 	static bool is_started;
 	static uint16_t handle;
 
-	static void blecent_scan();
-
 	static int chr_disced(uint16_t conn_handle, const struct ble_gatt_error *error,
 					  const struct ble_gatt_chr *chr, void *arg);
 	static int svc_disced(uint16_t conn_handle, const struct ble_gatt_error *error,

@@ -57,43 +57,6 @@ int NimbleCentral::start(const char *device_name) {
 	return 0;
 }
 
-void NimbleCentral::blecent_scan() {
-	ESP_LOGI(tag, "start scan");
-	uint8_t own_addr_type;
-	struct ble_gap_disc_params disc_params;
-	int rc;
-
-	/* Figure out address to use while advertising (no privacy for now) */
-	rc = ble_hs_id_infer_auto(0, &own_addr_type);
-	if (rc != 0) {
-		MODLOG_DFLT(ERROR, "error determining address type; rc=%d\n", rc);
-		return;
-	}
-
-	/* Tell the controller to filter duplicates; we don't want to process
-	 * repeated advertisements from the same device.
-	 */
-	disc_params.filter_duplicates = 1;
-
-	/**
-	 * Perform a passive scan.  I.e., don't send follow-up scan requests to
-	 * each advertiser.
-	 */
-	disc_params.passive = 1;
-
-	/* Use defaults for the rest of the parameters. */
-	disc_params.itvl		 = 0;
-	disc_params.window		 = 0;
-	disc_params.filter_policy = 0;
-	disc_params.limited		 = 0;
-
-	rc = ble_gap_disc(
-	    own_addr_type, BLE_HS_FOREVER, &disc_params, [](struct ble_gap_event *event, void *arg) { return 0; }, nullptr);
-	if (rc != 0) {
-		MODLOG_DFLT(ERROR, "Error initiating GAP discovery procedure; rc=%d\n", rc);
-	}
-}
-
 typedef struct {
 	NimbleCallback callback;
 	const ble_uuid_t *service;
@@ -181,24 +144,13 @@ int NimbleCentral::blecent_gap_event(struct ble_gap_event *event, void *arg) {
 }
 
 int NimbleCentral::connect(const ble_addr_t *address, NimbleCallback callback) {
-	blecent_scan();
-
 	int rc;
-	/* Scanning must be stopped before a connection can be initiated. */
-	rc = ble_gap_disc_cancel();
-	if (rc != 0) {
-		MODLOG_DFLT(DEBUG, "Failed to cancel scan; rc=%d\n", rc);
-		callback(0, NimbleCallbackReason::STOP_CANCEL_FAILED);
-		return rc;
-	}
+	assert(callback != nullptr);
 
-	// BLE通信安定化のためにWaitを挿入
-	// https://github.com/espressif/esp-idf/issues/5105#issuecomment-844641580
-	// vTaskDelay(100 / portTICK_PERIOD_MS); // 関係ないっぽい
-
-	ESP_LOGI(tag, "connect args: %p", callback);
 	rc = ble_gap_connect(0, address, 4000, nullptr, blecent_gap_event, (void *)callback);
-	if (rc && callback) callback(0x0000, NimbleCallbackReason::CONNECTION_FAILED);
+	ESP_LOGI(tag, "gap connect result: %d", rc);
+	if (rc == BLE_HS_EDONE) callback(0x0000, NimbleCallbackReason::CONNECTION_ESTABLISHED);
+	else if (rc) callback(0x0000, NimbleCallbackReason::CONNECTION_FAILED);
 
 	return rc;
 }
