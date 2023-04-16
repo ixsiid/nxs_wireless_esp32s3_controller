@@ -187,6 +187,8 @@ bool NXSWirelessClient::disconnect() {
 
 bool NXSWirelessClient::connect_send_disconnect(const uint8_t *pin, const uint8_t *command, size_t length) {
 	if (!connect(pin)) return false;
+	vTaskDelay(0);
 	if (!send(command, length)) return false;
+	vTaskDelay(0);
 	return disconnect();
 }
