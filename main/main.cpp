@@ -17,11 +17,12 @@
  * under the License.
  */
 
-#include "esp_log.h"
-#include "nvs_flash.h"
+#include <esp_log.h>
+#include <nvs_flash.h>
+#include <esp_sleep.h>
+#include <driver/rtc_io.h>
 
 #include <nxs_wireless_client.hpp>
-#include <button.hpp>
 
 #include "nxs_macaddr.h"
 // #define NXS_MAC "your_nxs_quantumm_mac_address" // "01:23:45:68:89:ab"
@@ -37,9 +38,57 @@ void app_main();
 
 #define CONFIG_MAX_BRIGHTNESS 20
 
+void sleep() {
+	ESP_LOGI(tag, "Goto sleep");
+
+	gpio_num_t ext_wakeup_pin_1 = gpio_num_t::GPIO_NUM_6;
+	gpio_num_t ext_wakeup_pin_2 = gpio_num_t::GPIO_NUM_7;
+
+	esp_sleep_enable_ext1_wakeup(
+	    BIT64(ext_wakeup_pin_1) | BIT64(ext_wakeup_pin_2),	 // | BIT64(GPIO_NUM_41),
+	    ESP_EXT1_WAKEUP_ANY_HIGH);
+
+	esp_sleep_pd_config(ESP_PD_DOMAIN_RTC_PERIPH, ESP_PD_OPTION_ON);
+	rtc_gpio_pullup_dis(ext_wakeup_pin_1);
+	rtc_gpio_pulldown_en(ext_wakeup_pin_1);
+	rtc_gpio_pullup_dis(ext_wakeup_pin_2);
+	rtc_gpio_pulldown_en(ext_wakeup_pin_2);
+
+	gpio_num_t pull_up_pin = gpio_num_t::GPIO_NUM_5;
+	rtc_gpio_init(pull_up_pin);
+	rtc_gpio_set_direction(pull_up_pin, rtc_gpio_mode_t::RTC_GPIO_MODE_OUTPUT_ONLY);
+	rtc_gpio_set_direction_in_sleep(pull_up_pin, rtc_gpio_mode_t::RTC_GPIO_MODE_OUTPUT_ONLY);
+	rtc_gpio_set_level(pull_up_pin, 1);
+
+	esp_deep_sleep_start();
+}
+
+enum class Action {
+	None,
+	Up,
+	Down,
+};
+
 void app_main(void) {
 	ESP_LOGI(tag, "Start");
 	esp_err_t ret;
+
+	esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
+	if (wakeup_reason != ESP_SLEEP_WAKEUP_EXT1) sleep();
+
+	Action act		= Action::None;
+	uint64_t wakeup_pin = esp_sleep_get_ext1_wakeup_status();
+	ESP_LOGI(tag, "wake up pin: %lld", wakeup_pin);
+	if (wakeup_pin & (1ULL << 6)) {
+		ESP_LOGI(tag, "pin 6");
+		act = Action::Up;
+	}
+	if (wakeup_pin & (1ULL << 7)) {
+		ESP_LOGI(tag, "pin 7");
+		act = Action::Down;
+	}
+
+	if (act == Action::None) sleep();
 
 	/* Initialize NVS — it is used to store PHY calibration data */
 	ret = nvs_flash_init();
@@ -51,69 +100,20 @@ void app_main(void) {
 
 	static NXSWirelessClient *nxs = new NXSWirelessClient(NXS_MAC);
 
-	// LED
-	static TickType_t led_dis = 0xffffffff;
-	static RMT_WS2812 *led	 = new RMT_WS2812(RMT_WS2812::esp_board::ATOMS3_lite);
-	led->clear();
-
-	// 起動時に青で点滅
-	led->setPixel(0, 0, 0, 255);
-	led->setBrightness(CONFIG_MAX_BRIGHTNESS);
-	led->refresh();
-	led_dis = xTaskGetTickCount() + 1000 / portTICK_PERIOD_MS;
-
-	// ATOMS3
-	/// G6をGND代わりに使う
-	const gpio_num_t gnd_pin = gpio_num_t::GPIO_NUM_5;
-	gpio_set_direction(gnd_pin, gpio_mode_t::GPIO_MODE_OUTPUT);
-	gpio_set_level(gnd_pin, 0);
-
-	/// High, Lowボタンのピン番号
-	const uint8_t high_pin  = 6;
-	const uint8_t low_pin   = 7;
-	const uint8_t debug_pin = 41;
-
-	const uint8_t buttonPins[] = {high_pin, low_pin, debug_pin};
-	static Button *button	  = new Button(buttonPins, sizeof(buttonPins));
-
-	while (true) {
-		// Main loop
-		vTaskDelay(50 / portTICK_RATE_MS);
-		TickType_t now = xTaskGetTickCount();
-		if (now > led_dis) {
-			ESP_LOGI(tag, "led clear");
-			led->clear();
-			led_dis = 0xffffffff;
-		}
-
-		button->check(nullptr, [](uint8_t pin) {
-			int retry = 3;
-			switch (pin) {
-				case high_pin:
-					ESP_LOGI(tag, "button: high");
-					led->setPixel(0, 255, 0, 0);
-					led->refresh();
-					while (--retry) {
-						if (nxs->connect_up_disconnect(NXS_PIN)) break;
-					}
-					break;
-				case low_pin:
-					ESP_LOGI(tag, "button: low");
-					led->setPixel(0, 0, 255, 0);
-					led->refresh();
-					while (--retry) {
-						if (nxs->connect_down_disconnect(NXS_PIN)) break;
-					}
-					break;
-				case debug_pin:
-					ESP_LOGI(tag, "button: debug");
-					led->setPixel(0, 0, 0, 255);
-					led->refresh();
-					// nxs->connect(NXS_PIN);
-					nxs->up();
-					nxs->disconnect();
+	int retry = 3;
+	switch (act) {
+		case Action::Up:
+			while (retry--) {
+				if (nxs->connect_up_disconnect(NXS_PIN)) break;
 			}
-			led_dis = xTaskGetTickCount() + 500 / portTICK_PERIOD_MS;
-		});
+			break;
+		case Action::Down:
+			while (retry--) {
+				if (nxs->connect_down_disconnect(NXS_PIN)) break;
+			}
+			break;
+		default:
+			break;
 	}
+	sleep();
 }
