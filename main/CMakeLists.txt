@@ -1,3 +1,3 @@
-idf_component_register(SRCS "main.cpp" "button.cpp"
-                    PRIV_REQUIRES nvs_flash nxs-wireless-client simple_ws2812_rmt_esp-idf
+idf_component_register(SRCS "main.cpp"
+                    PRIV_REQUIRES nvs_flash nxs-wireless-client
                     INCLUDE_DIRS ".")

@@ -34,10 +34,6 @@ extern "C" {
 void app_main();
 }
 
-#include "RMT_WS2812.hpp"
-
-#define CONFIG_MAX_BRIGHTNESS 20
-
 void sleep() {
 	ESP_LOGI(tag, "Goto sleep");
 
@@ -99,7 +95,7 @@ void app_main(void) {
 	}
 	ESP_ERROR_CHECK(ret);
 
-	static NXSWirelessClient *nxs = new NXSWirelessClient(NXS_MAC);
+	NXSWirelessClient* nxs = new NXSWirelessClient(NXS_MAC);
 
 	int retry = 3;
 	switch (act) {
@@ -116,5 +112,6 @@ void app_main(void) {
 		default:
 			break;
 	}
+
 	sleep();
 }
