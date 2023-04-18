@@ -71,12 +71,12 @@ enum class Action {
 
 void app_main(void) {
 	ESP_LOGI(tag, "Start");
-	esp_err_t ret;
 
 	esp_sleep_wakeup_cause_t wakeup_reason = esp_sleep_get_wakeup_cause();
 	if (wakeup_reason != ESP_SLEEP_WAKEUP_EXT1) sleep();
 
-	Action act		= Action::None;
+	Action act = Action::None;
+
 	uint64_t wakeup_pin = esp_sleep_get_ext1_wakeup_status();
 	ESP_LOGI(tag, "wake up pin: %lld", wakeup_pin);
 	if (wakeup_pin & (1ULL << 6)) {
@@ -91,6 +91,7 @@ void app_main(void) {
 	if (act == Action::None) sleep();
 
 	/* Initialize NVS — it is used to store PHY calibration data */
+	esp_err_t ret;
 	ret = nvs_flash_init();
 	if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
 		ESP_ERROR_CHECK(nvs_flash_erase());

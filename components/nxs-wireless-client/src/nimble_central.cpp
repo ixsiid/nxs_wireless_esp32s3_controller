@@ -26,18 +26,20 @@ int NimbleCentral::start(const char *device_name) {
 
 	nimble_port_init();
 	/* Configure the host. */
+	/*
 	ble_hs_cfg.reset_cb = [](int reason) {};
 	ble_hs_cfg.sync_cb	= []() {
 		 int rc;
 
-		 /* Make sure we have proper identity address set (public preferred) */
+		 // Make sure we have proper identity address set (public preferred)
 		 rc = ble_hs_util_ensure_addr(0);
 		 assert(rc == 0);
 	};
 	ble_hs_cfg.store_status_cb = ble_store_util_status_rr;
+	*/
 
 	/* Set the default device name. */
-	rc = ble_svc_gap_device_name_set(device_name);
+	// rc = ble_svc_gap_device_name_set(device_name);
 
 	nimble_port_freertos_init([](void *param) {
 		ESP_LOGI(tag, "BLE Host Task Started");
@@ -49,7 +51,7 @@ int NimbleCentral::start(const char *device_name) {
 	});
 
 	is_started = true;
-	ESP_LOGI(tag, "started %d", rc);
+	// ESP_LOGI(tag, "started %d", rc);
 	return 0;
 }
 
