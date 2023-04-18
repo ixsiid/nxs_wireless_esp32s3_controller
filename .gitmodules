@@ -1,3 +1,0 @@
-[submodule "components/simple_ws2812_rmt_esp-idf"]
-	path = components/simple_ws2812_rmt_esp-idf
-	url = https://github.com/ixsiid/simple_ws2812_rmt_esp-idf.git
