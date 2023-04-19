@@ -36,35 +36,41 @@ SimpleNimbleCentral::SimpleNimbleCentral()
 	});
 }
 
+enum class DiscType : uintptr_t {
+	Service,
+	Characteristic,
+};
+
 int SimpleNimbleCentral::svc_chr_disced(uint16_t conn_handle,
 								const struct ble_gatt_error *error,
 								const void *svc_chr, void *arg) {
 	int rc = 0;
 	ESP_LOGI(tag, "event status: %d", error->status);
 
-	int mode;
 	switch (error->status) {
-		case 0:
-			mode = (int)arg;
-			if (mode == 0) {
-				// find_service
-				const struct ble_gatt_svc *service = (const struct ble_gatt_svc *)svc_chr;
+		case 0: {
+			DiscType mode = static_cast<DiscType>(reinterpret_cast<uintptr_t>(arg));
+			switch (mode) {
+				case DiscType::Service: {
+					// find_service
+					const struct ble_gatt_svc *service = static_cast<const struct ble_gatt_svc *>(svc_chr);
 
-				instance->service_start_handle = service->start_handle;
-				instance->service_end_handle	 = service->end_handle;
-				xEventGroupSetBits(event_group, EVENT_FOUND);
-			} else if (mode == 1) {
-				// find_characteristic
-				const struct ble_gatt_chr *chr = (const struct ble_gatt_chr *)svc_chr;
+					instance->service_start_handle = service->start_handle;
+					instance->service_end_handle	 = service->end_handle;
+					break;
+				}
+				case DiscType::Characteristic: {
+					// find_characteristic
+					const struct ble_gatt_chr *chr = static_cast<const struct ble_gatt_chr *>(svc_chr);
 
-				instance->characteristic_handle = chr->val_handle;
-				xEventGroupSetBits(event_group, EVENT_FOUND);
-			} else {
-				// unknown args
+					instance->characteristic_handle = chr->val_handle;
+					break;
+				}
 			}
+			xEventGroupSetBits(event_group, EVENT_FOUND);
 
 			break;
-
+		}
 		// ENOTCONNが呼ばれたときに、EDONEが呼ばれないかは不明
 		case BLE_HS_ENOTCONN:
 			xEventGroupSetBits(event_group, EVENT_NOT_CONNECTION | EVENT_DONE);
@@ -170,6 +176,7 @@ bool SimpleNimbleCentral::connect(const ble_addr_t *address) {
 		return false;
 
 	EventBits_t b = xEventGroupWaitBits(event_group, EVENT_DONE, true, false, portMAX_DELAY);
+	vTaskDelay(0);
 	if (b & EVENT_CONNECTION_FAILED) return false;
 	return true;
 }
@@ -187,9 +194,10 @@ int SimpleNimbleCentral::find_service(const ble_uuid_t *service, int timeout) {
 	// handleが常に0なのは謎
 	ble_gattc_disc_svc_by_uuid(handle, service,
 						  (int (*)(uint16_t, const struct ble_gatt_error *, const struct ble_gatt_svc *, void *))svc_chr_disced,
-						  (void *)0);
+						  reinterpret_cast<void *>(DiscType::Service));
 
 	EventBits_t b = xEventGroupWaitBits(event_group, EVENT_DONE, true, false, portMAX_DELAY);
+	vTaskDelay(0);
 
 	if (b &= EVENT_FOUND) return true;
 	return false;
@@ -204,9 +212,10 @@ int SimpleNimbleCentral::find_characteristic(const ble_uuid_t *characteristic, i
 						   service_end_handle,
 						   characteristic,
 						   (int (*)(uint16_t, const struct ble_gatt_error *, const struct ble_gatt_chr *, void *))svc_chr_disced,
-						   (void *)1);
+						   reinterpret_cast<void *>(DiscType::Characteristic));
 
 	EventBits_t b = xEventGroupWaitBits(event_group, EVENT_DONE, true, false, portMAX_DELAY);
+	vTaskDelay(0);
 
 	if (b &= EVENT_FOUND) return true;
 	return false;

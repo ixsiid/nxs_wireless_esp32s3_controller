@@ -1,11 +1,11 @@
 #include <esp_log.h>
 #include "nxs_wireless_client.hpp"
 
-// SwitchBot Bot:
+// NXS Wireless:
 //        Service UUID: "a5c1c000-cc20-ba91-0c1a-ef3f9e643d79"
 // Characteristic
-//     Auth UUID: "a5c1cc02-cc20-ba91-0c1a-ef3f9e643d79"
-//  Control UUID: "a5c1cc01-cc20-ba91-0c1a-ef3f9e643d79"
+//           Auth UUID: "a5c1cc02-cc20-ba91-0c1a-ef3f9e643d79"
+//        Control UUID: "a5c1cc01-cc20-ba91-0c1a-ef3f9e643d79"
 
 #define tag "NXSClient"
 
@@ -56,13 +56,9 @@ bool NXSWirelessClient::send(const uint8_t *command, size_t length) {
 
 bool NXSWirelessClient::connect(const uint8_t *pin) {
 	if (!central->connect((const ble_addr_t *)&address)) return false;
-	vTaskDelay(0);
 	if (!central->find_service((const ble_uuid_t *)&service)) return false;
-	vTaskDelay(0);
 	if (!central->find_characteristic((const ble_uuid_t *)&auth_characteristic)) return false;
-	vTaskDelay(0);
 	if (!central->write(pin, 4)) return false;
-	vTaskDelay(0);
 	if (!central->find_characteristic((const ble_uuid_t *)&control_characteristic)) return false;
 	return true;
 }
@@ -73,8 +69,6 @@ bool NXSWirelessClient::disconnect() {
 
 bool NXSWirelessClient::connect_send_disconnect(const uint8_t *pin, const uint8_t *command, size_t length) {
 	if (!connect(pin)) return false;
-	vTaskDelay(0);
 	if (!send(command, length)) return false;
-	vTaskDelay(0);
 	return disconnect();
 }

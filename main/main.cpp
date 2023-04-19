@@ -25,8 +25,10 @@
 #include <nxs_wireless_client.hpp>
 
 #include "nxs_macaddr.h"
-// #define NXS_MAC "your_nxs_quantumm_mac_address" // "01:23:45:68:89:ab"
-// #define NXS_PIN "your_nxs_quantumm_pin" // {0x01, 0x01, 0x01, 0x01}
+/**
+const char NXS_MAC[] = "01:23:45:68:89:ab";
+const uint8_t NXS_PIN[] = {0x01, 0x02, 0x03, 0x04};
+*/
 
 #define tag "NXS"
 
