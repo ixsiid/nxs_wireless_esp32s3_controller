@@ -22,7 +22,7 @@
 #include <esp_sleep.h>
 #include <driver/rtc_io.h>
 
-#include <nxs_wireless_client.hpp>
+#include "nxs_wireless_client.hpp"
 
 #include "nxs_macaddr.h"
 /**

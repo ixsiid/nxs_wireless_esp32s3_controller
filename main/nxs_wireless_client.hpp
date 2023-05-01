@@ -2,7 +2,7 @@
 
 #include <nimble/ble.h>
 #include <host/ble_uuid.h>
-#include "simple_nimble_central.hpp"
+#include <simple_nimble_central.hpp>
 
 class NXSWirelessClient {
     private:
