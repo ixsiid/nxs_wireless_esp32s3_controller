@@ -1,0 +1,3 @@
+[submodule "components/simple-nimble-central"]
+	path = components/simple-nimble-central
+	url = https://github.com/ixsiid/simple-nimble-central.git
