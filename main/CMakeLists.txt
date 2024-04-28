@@ -1,3 +1,3 @@
 idf_component_register(SRCS "main.cpp" "nxs_wireless_client.cpp"
-                    PRIV_REQUIRES nvs_flash simple-nimble-central
+                    PRIV_REQUIRES nvs_flash simple-nimble-central driver
                     INCLUDE_DIRS ".")
